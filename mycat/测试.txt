@@ -1,0 +1,154 @@
+bash: cmake: command not found
+https://cmake.org/
+yum install -y cmake
+yum -y install gcc automake autoconf libtool make
+
+一、环境准备
+软件版本：
+操作系统：
+CentOS-6.5-x86_64-bin-DVD1.iso
+JDK版本：jdk1.7.0_80
+
+Mycat版本：Mycat-server-1.5.1-RELEASE-20170717215510-Linux.tar.gz (下载源码自行编译的)
+MySQL:5.6.32
+
+
+二、安装数据库并配置主从复制
+1、不同主机安装数据库
+不同主机安装数据库，并配置主从复制，
+大家可以参考博文《MySQL之——CentOS6.5 编译安装MySQL5.6.16》和《MySQL之——主从复制的配置》
+
+
+2、同一主机安装多数据库
+这里，再给大家介绍一种如何在同一主机上安装多个MySQL数据库，
+
+
+2.1安装主库
+--------------------- 
+tar -xvf mysql-5.6.32.tar.gz
+cd mysql-5.6.32
+ 
+
+time cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql3317 -DMYSQL_DATADIR=/home/data/mysql3317/data -DWITH_INNOBASE_STORAGE_ENGINE=1 -DMYSQL_UNIX_ADDR==/usr/local/mysql3317/mysql.sock -DMYSQL_USER=mysql -DDEFAULT_CHARSET=utf8 -DDEFAULT_COLLATION=utf8_general_ci
+--------------------- 
+作者：冰 河 
+来源：CSDN 
+原文：https://blog.csdn.net/l1028386804/article/details/76944940 
+版权声明：本文为博主原创文章，转载请附上博文链接！ 
+time make
+time make install 
+ 
+chown -R mysql /home/data/
+chgrp -R mysql /home/data/
+chown -R mysql /usr/local/mysql
+ 
+chown -R mysql /usr/local/mysql3317
+chgrp -R mysql /usr/local/mysql
+ 
+chgrp -R mysql /usr/local/mysql3317/
+mkdir -p /home/data/mysql3317/binlog/
+chown -R mysql.mysql /home/data/mysql3317/binlog/
+mkdir -p /home/data/mysql5610/binlog/
+chown -R mysql.mysql /home/data/
+ 
+cd /usr/local/mysql3317
+time scripts/mysql_install_db  --user=mysql --basedir=/usr/local/mysql3317 --datadir=/home/data/mysql3317/data --defaults-file=/usr/local/mysql3317/my.cnf
+ 
+cp support-files/mysql.server /etc/init.d/mysql3317
+chmod 700 /etc/init.d/mysql3317
+echo "export PATH=$PATH:/usr/local/mysql3317/bin">>/etc/profile 
+source /etc/profile
+chkconfig --add mysql3317
+ 
+service mysql3317 start
+----------------------------------------
+2.2安装从库
+----------------------------------------
+tar -xvf mysql-5.6.32.tar.gz
+cd mysql-5.6.32
+ 
+time cmake . -DCMAKE_INSTALL_PREFIX=/usr/local/mysql3327 -DMYSQL_DATADIR=/home/data/mysql3327/data -DWITH_INNOBASE_STORAGE_ENGINE=1 -DMYSQL_UNIX_ADDR==/usr/local/mysql3327/mysql.sock -DMYSQL_USER=mysql -DDEFAULT_CHARSET=utf8 -DDEFAULT_COLLATION=utf8_general_ci
+ 
+time make
+time make install 
+ 
+ 
+chown -R mysql /home/data/
+chgrp -R mysql /home/data/
+chown -R mysql /usr/local/mysql
+ 
+chown -R mysql /usr/local/mysql3327
+chgrp -R mysql /usr/local/mysql
+ 
+chgrp -R mysql /usr/local/mysql3327/
+mkdir -p /home/data/mysql3327/binlog/
+chown -R mysql.mysql /home/data/mysql3327/binlog/
+mkdir -p /home/data/mysql5610/binlog/
+chown -R mysql.mysql /home/data/
+ 
+ 
+cd /usr/local/mysql3327
+time scripts/mysql_install_db  --user=mysql --basedir=/usr/local/mysql3327 --datadir=/home/data/mysql3327/data --defaults-file=/usr/local/mysql3327/my.cnf
+ 
+cp support-files/mysql.server /etc/init.d/mysql3327
+chmod 700 /etc/init.d/mysql3327
+echo "export PATH=$PATH:/usr/local/mysql3327/bin">>/etc/profile 
+source /etc/profile
+chkconfig --add mysql3327
+service mysql3327 start
+----------------------------------
+三、安装Mycat
+将Mycat上传到指定路径并解压。
+四、数据同步测试
+
+1、配置schema.xml
+然后修改mycat的schema.xml：
+balance为1：让全部的readHost及备用的writeHost参与select的负载均衡。
+
+switchType为2：基于MySQL主从同步的状态决定是否切换。
+
+heartbeat：主从切换的心跳语句必须为show slave status。
+--------------------- 
+2、数据录入
+
+mysql> explain create table company(id int not null primary key,name varchar(100));
++-----------+---------------------------------------------------------------------+
+| DATA_NODE | SQL                                                                 |
++-----------+---------------------------------------------------------------------+
+| dn1       | create table company(id int not null primary key,name varchar(100)) |
+| dn2       | create table company(id int not null primary key,name varchar(100)) |
+| dn3       | create table company(id int not null primary key,name varchar(100)) |
++-----------+---------------------------------------------------------------------+
+3 rows in set (0.00 sec)
+ 
+mysql> create table company(id int not null primary key,name varchar(100));
+Query OK, 0 rows affected (0.01 sec)
+ 
+mysql> explain  insert into company(id,name) values(1,'liuyazhuang');
++-----------+--------------------------------------------------+
+| DATA_NODE | SQL                                              |
++-----------+--------------------------------------------------+
+| dn1       | insert into company(id,name) values(1,'liuyazhuang') |
+| dn2       | insert into company(id,name) values(1,'liuyazhuang') |
+| dn3       | insert into company(id,name) values(1,'liuyazhuang') |
++-----------+--------------------------------------------------+
+3 rows in set (0.10 sec)
+ 
+mysql>  insert into company(id,name) values(1,'liuyazhuang');
+Query OK, 1 row affected (0.00 sec)
+ 
+mysql>
+
+
+
+
+作者：冰 河 
+来源：CSDN 
+原文：https://blog.csdn.net/l1028386804/article/details/76944940 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+作者：冰 河 
+来源：CSDN 
+原文：https://blog.csdn.net/l1028386804/article/details/76944940 
+版权声明：本文为博主原创文章，转载请附上博文链接！

@@ -1,0 +1,247 @@
+Mysql主服务器配置： 
+第一步：修改my.conf文件： 
+
+在[mysqld]段下添加：
+
+
+binlog-do-db=db1
+
+binlog-ignore-db=mysql
+
+#启用二进制日志
+
+log-bin=mysql-bin
+
+#服务器唯一ID，一般取IP最后一段
+
+server-id=134
+
+第二步：重启mysql服务
+
+
+service mysql restart
+
+第三步：建立帐户并授权slave
+
+
+mysql>GRANT FILE ON *.* TO 'backup'@'%' IDENTIFIED BY '123456';
+
+mysql>GRANT REPLICATION SLAVE, REPLICATION CLIENT ON *.* to 'backup'@'%' identified by '123456'; 
+
+#一般不用root帐号，“%”表示所有客户端都可能连，只要帐号，密码正确，此处可用具体客户端IP代替，如192.168.145.226，加强安全
+
+刷新权限
+
+mysql> FLUSH PRIVILEGES;
+
+
+查看mysql现在有哪些用户
+
+mysql>select user,host from mysql.user;
+
+第四步：查询master的状态
+
+
+mysql> show master status;
+
++------------------+----------+--------------+------------------+-------------------+
+| File             | Position | Binlog_Do_DB | Binlog_Ignore_DB | Executed_Gtid_Set 
+|
++------------------+----------+--------------+------------------+-------------------+
+| mysql-bin.000001 |      120 | db1          | mysql            |                   |
+
++------------------+----------+--------------+------------------+-------------------+
+1 row in set
+--------------------- 
+
+
+
+
+
+
+
+
+
+
+
+Mysql从服务器配置： 
+
+第一步：修改my.conf文件 
+
+[mysqld]下
+
+server-id=166
+
+
+第二步：配置从服务器
+mysql>change master to master_host='192.168.25.134',master_port=3306,master_user='backup',master_password='123456',master_log_file='mysql-bin.000001',master_log_pos=120 
+注意语句中间不要断开，master_port为mysql服务器端口号(无引号)，master_user为执行同步操作的数据库账户，“120”无单引号(此处的120就是show master status 中看到的position的值，这里的mysql-bin.000001就是file对应的值)
+1
+2
+3
+
+启动从服务器复制功能
+
+
+Mysql>start slave; 
+--------------------- 
+错误处理： 
+如果出现此错误： 
+Fatal error: The slave I/O thread stops because master and slave have equal MySQL server UUIDs; these UUIDs must be different for replication to work. 
+因为mysql是克隆的系统，所以mysql的uuid是一样的，所以需要修改 
+解决方法： 
+删除/var/lib/mysql/auto.cnf文件，重新启动服务
+--------------------- 
+第三步：检查从服务器复制功能状态
+
+
+mysql> show slave status
+1
+Slave_IO_Running: Yes //此状态必须YES
+
+Slave_SQL_Running: Yes //此状态必须YES
+
+注：Slave_IO及Slave_SQL进程必须正常运行，即YES状态，否则都是错误的状态(如：其中一个NO均属错误)
+--------------------- 
+
+
+
+
+Schema.xml配置： 
+Mycat 1.4 支持MySQL主从复制状态绑定的读写分离机制，让读更加安全可靠，配置如下：
+
+
+<dataNode name="dn1" dataHost="localhost1" database="db1" />
+    
+<dataNode name="dn2" dataHost="localhost1" database="db2" />
+    
+<dataNode name="dn3" dataHost="localhost1" database="db3" />
+    
+<dataHost name="localhost1" maxCon="1000" minCon="10" balance="1"
+        writeType="0" dbType="mysql" dbDriver="native" switchType="2"  slaveThreshold="100">
+        
+<heartbeat>show slave status</heartbeat>
+        
+<writeHost host="hostM" url="192.168.25.134:3306" user="root"
+            password="root">
+ 
+<readHost  host="hostS" url="192.168.25.166:3306" user="root"
+            password="root"/>
+ 
+</writeHost>
+    
+</dataHost>
+--------------------- 
+(1)设置 balance=”1”与writeType=”0” 
+Balance参数设置： 
+1、 balance=“0”, 所有读操作都发送到当前可用的writeHost上 
+2、balance=“1”，所有读操作都随机的发送到readHost 
+3、balance=“2”，所有读操作都随机的在writeHost、readhost上分发 
+WriteType参数设置： 
+1、writeType=“0”, 所有写操作都发送到可用的writeHost上 
+2、writeType=“1”，所有写操作都随机的发送到readHost 
+3、 writeType=“2”，所有写操作都随机的在writeHost、readhost分上发
+--------------------- 
+readHost是从属于writeHost的，即意味着它从那个writeHost获取同步数据，因此，当它所属的writeHost宕机了，则它也不会再参与到读写分离中来，即“不工作了”，这是因为此时，它的数据已经“不可靠”了。基于这个考虑，目前mycat 1.3和1.4版本中，若想支持MySQL一主一从的标准配置，并且在主节点宕机的情况下，从节点还能读取数据，则需要在Mycat里配置为两个writeHost并设置banlance=1
+--------------------- 
+(2)设置 switchType=”2” 与slaveThreshold=”100” 
+switchType 目前有三种选择： 
+-1：表示不自动切换 
+1 ：默认值，自动切换 
+2 ：基于MySQL主从同步的状态决定是否切换
+
+Mycat心跳检查语句配置为 show slave status ，dataHost 上定义两个新属性： switchType="2" 与slaveThreshold="100"，
+此时意味着开启MySQL主从复制状态绑定的  读写分离与切换  机制。Mycat心跳机制通过检测 show slave status 中的 "Seconds_Behind_Master", "Slave_IO_Running", "Slave_SQL_Running" 三个字段来确定当前主从同步的状态
+以及Seconds_Behind_Master主从复制时延
+--------------------- 
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+3：执行如下命令，使其建立主从关系，192.168.10.37为192.168.10.36的Slave
+
+在192.168.10.36上执行：
+
+grant replication slave on *.* to 'sync'@'192.168.10.37' identified by 'sync';
+
+在192.168.10.37上执行：
+
+change master to master_host='192.168.10.36', master_user='repluser',master_password='replpass', master_auto_position=1;（此处使用的是GTID多线程复制）
+
+start slave;
+
+此时使用show slave status\G;可验证主从关系是否建立完成，如下图：
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+
+
+
+
+
+
+
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！
+--------------------- 
+作者：小刀有话说 
+来源：CSDN 
+原文：https://blog.csdn.net/chenxiansheng888/article/details/78640910 
+版权声明：本文为博主原创文章，转载请附上博文链接！

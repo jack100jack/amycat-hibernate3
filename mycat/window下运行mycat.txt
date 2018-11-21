@@ -1,0 +1,106 @@
+4、启动和停止
+可以使用如下命令启动mycat服务
+mycat.bat install
+mycat.bat start
+启动后可以通过如下命令查看mycat的运行状态：
+mycat.bat status
+可以使用如下命令停止mycat服务
+mycat.bat stop
+
+解决方案：增加一个系统环境变量
+
+变量名：_JAVA_OPTIONS
+
+变量值：-Xmx512M
+
+保存后，就OK!!
+
+Net Stop Mycat-server
+sc delete Mycat-server
+create database db1;
+create database db2;
+create database db3;
+
+
+CREATE TABLE `test_one` (
+    `id` BIGINT (20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `name` VARCHAR (50) DEFAULT NULL COMMENT '名称',
+    `remark` VARCHAR (500) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`)
+) ENGINE = INNODB AUTO_INCREMENT = 2 DEFAULT CHARSET = utf8mb4 COMMENT = '测试';
+
+
+CREATE TABLE `test_one` (
+    `id` BIGINT (20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `name` VARCHAR (50) DEFAULT NULL COMMENT '名称',
+    `remark` VARCHAR (500) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`)
+) ENGINE = INNODB AUTO_INCREMENT = 2 DEFAULT CHARSET = utf8 COMMENT = '测试';
+
+<table name="users" primaryKey="id" type="global" dataNode="node_db01" />
+ 
+        
+<table name="item" primaryKey="id" dataNode="node_db02,node_db03" rule="mod-long">
+                <childTable name="item_detail" primaryKey="id" joinKey="item_id" parentKey="id" />
+        </table>
+
+
+==========================================================================
+create database db1;
+create database db2;
+create database db3;
+ 
+CREATE TABLE users (
+    id INT NOT NULL AUTO_INCREMENT,
+    name varchar(50) NOT NULL default '',
+    indate DATETIME NOT NULL default '0000-00-00 00:00:00',
+    PRIMARY KEY (id)
+)AUTO_INCREMENT= 1 ENGINE=InnoDB DEFAULT CHARSET=utf8;
+ 
+CREATE TABLE item (
+    id INT NOT NULL AUTO_INCREMENT,
+    value INT NOT NULL default 0,
+    indate DATETIME NOT NULL default '0000-00-00 00:00:00',
+    PRIMARY KEY (id)
+)AUTO_INCREMENT= 1 ENGINE=InnoDB DEFAULT CHARSET=utf8;
+ 
+CREATE TABLE item_detail (
+    id INT NOT NULL AUTO_INCREMENT,
+    value INT NOT NULL default 0,
+    name varchar(50) NOT NULL default '',
+	item_id INT NOT NULL,
+    PRIMARY KEY (id),
+	key (item_id)
+)AUTO_INCREMENT= 1 ENGINE=InnoDB DEFAULT CHARSET=utf8;
+--------------------- 
+insert into users(name,indate) values('kk',now());
+insert into item(id,value,indate) values(1,100,now());
+insert into item_detail(value,name,item_id) values('pad',40,1);
+insert into item_detail(value,name,item_id) values('phone',50,1);
+ 
+insert into item(id,value,indate) values(999,100,now());
+insert into item_detail(value,name,item_id) values('pad',40,999);
+insert into item_detail(value,name,item_id) values('phone',50,999);
+=============================================================================
+CREATE DATABASE `db1`;
+CREATE DATABASE `db2`;
+CREATE DATABASE `db3`;
+CREATE DATABASE `db4`;
+CREATE DATABASE `db5`;
+CREATE DATABASE `db6`;
+CREATE DATABASE `db7`;
+CREATE DATABASE `db8`;
+CREATE DATABASE `db9`;
+CREATE DATABASE `db10`;
+CREATE DATABASE `db11`;
+CREATE DATABASE `db12`;
+
+CREATE TABLE `test_one` (
+    `id` BIGINT (20) NOT NULL AUTO_INCREMENT COMMENT 'id',
+    `name` VARCHAR (50) DEFAULT NULL COMMENT '名称',
+    `remark` VARCHAR (500) DEFAULT NULL COMMENT '备注',
+    `create_time` datetime DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`)
+) ENGINE = INNODB AUTO_INCREMENT = 2 DEFAULT CHARSET = utf8mb4 COMMENT = '测试';
